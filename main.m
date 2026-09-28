@@ -12,36 +12,16 @@
 %   
 %
 %           3x3 Cross section of Voxel model
-%           each pixel modeles absorbtion coef
-%                    
-%    |        *--------------------*       |  
-%    | y3---\ |      |      |      |       | 
-%    |   ---/ |  p1  |  p2  |  p3  |       | 
-%    -        *--------------------*       - 
-%    | y2---\ |      |      |      |       | 
-%    |   ---/ |  p4  |  p5  |  p6  |       | 
-%    -        *--------------------*       - 
-%    | y1---\ |      |      |      |       | 
-%    |   ---/ |  p7  |  p8  |  p9  |       | 
-%    |        *--------------------*       |  
+%           each pixel models an absorption coef
 %
+%   Voxel indexing (row-major):   p1 p2 p3 / p4 p5 p6 / p7 p8 p9
+%   Predefined model below:  horizontal rows (top to bottom) -> y3, y2, y1
+%                            vertical columns (left to right) -> y9, y10, y11
+%   These paths describe the predefined A, which is then replaced by
+%   random_model(m, n) (three random voxels per row).
 %
-%             -------|------|-------
-%                y9     y10    y11
-%                ||     ||     ||
-%                \/     \/     \/
-%             *--------------------*          
-%             |      |      |      |        
-%             |  p1  |  p2  |  p3  |        
-%             *--------------------*        
-%             |      |      |      |        
-%             |  p4  |  p5  |  p6  |        
-%             *--------------------*        
-%             |      |      |      |        
-%             |  p7  |  p8  |  p9  |        
-%             *--------------------*         
-%   
-%             -------|------|-------
+%   Diagrams: see README.md, images/voxel-horizontal.svg (y2 via p4 p5 p6)
+%   and images/voxel-vertical.svg (y10 via p2 p5 p8).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 close all

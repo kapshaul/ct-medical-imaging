@@ -41,41 +41,30 @@ $$
 Y_i = \sum_{j=1}^m N_{ij} \sim \sum_{j=1}^m Pois(a_{ij} \lambda_j)
 $$
 
-### 2. 3x3 cross section of voxel model
+### 2. From voxels to a measurement
 
-Each pixel represents the absorption coefficient. Below are examples of voxel models,
+The body model is a single $3 \times 3 \times 1$ layer of voxels $p_1, \dots, p_9$, numbered row by row. Each voxel $p_j$ has an unknown absorption parameter $\lambda_j$. One observation $Y_i$ is the sum of hidden per-voxel counts $N_{ij}$, each with mean $a_{ij} \lambda_j$. Blue faces mark the voxels along the selected measurement path.
 
-```
-                                |        *--------------------*       |  
-                                | y3---\ |      |      |      |       | 
-                                |   ---/ |  p1  |  p2  |  p3  |       | 
-                                -        *--------------------*       - 
-                                | y2---\ |      |      |      |       | 
-                                |   ---/ |  p4  |  p5  |  p6  |       | 
-                                -        *--------------------*       - 
-                                | y1---\ |      |      |      |       | 
-                                |   ---/ |  p7  |  p8  |  p9  |       | 
-                                |        *--------------------*       |  
-```
+<p align="center">
+<img src="images/voxel-horizontal.svg" width="420" alt="Nine voxels in a 3x3 layer; the middle-row voxels p4, p5 and p6 are highlighted in blue and a horizontal ray through them ends in observation Y2">
+<img src="images/voxel-vertical.svg" width="420" alt="Nine voxels in a 3x3 layer; the middle-column voxels p2, p5 and p8 are highlighted in blue and a vertical ray through them ends in observation Y10">
+</p>
 
-```                            
-                                         -------|------|-------
-                                            y9     y10    y11
-                                            ||     ||     ||
-                                            \/     \/     \/
-                                         *--------------------*          
-                                         |      |      |      |        
-                                         |  p1  |  p2  |  p3  |        
-                                         *--------------------*        
-                                         |      |      |      |        
-                                         |  p4  |  p5  |  p6  |        
-                                         *--------------------*        
-                                         |      |      |      |        
-                                         |  p7  |  p8  |  p9  |        
-                                         *--------------------*         
-                               
-                                         -------|------|------- 
-```
+*Horizontal: measurement $Y_2$ through $p_4$, $p_5$, $p_6$. Vertical: measurement $Y_{10}$ through $p_2$, $p_5$, $p_8$.*
+
+The observed counts $Y_2$ and $Y_{10}$ are Poisson draws; their expected values are weighted sums over the highlighted voxels,
+
+$$
+E[Y_2] = a_{2,4} \lambda_4 + a_{2,5} \lambda_5 + a_{2,6} \lambda_6
+$$
+
+$$
+E[Y_{10}] = a_{10,2} \lambda_2 + a_{10,5} \lambda_5 + a_{10,8} \lambda_8
+$$
+
+Only the totals $Y_i$ are observed. The EM algorithm below estimates the hidden per-voxel contributions $N_{ij}$ from each total and uses them to update every $\lambda_j$.
+
+**Simulation setup:** these paths illustrate the predefined matrix $A$ in [main.m](main.m) (horizontal rows 1–3 and vertical rows 9–11). The current simulation replaces $A$ with [random_model(m, n)](random_model.m), which selects three random voxels per observation; those voxels need not lie along a single row or column.
 
 ## EM Algorithm
 
