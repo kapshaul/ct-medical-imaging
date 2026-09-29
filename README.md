@@ -10,6 +10,19 @@ A nine-parameter tomography study of Poisson maximum likelihood, expectation max
 
 The report has been rebuilt with typeset derivations, vector diagrams, seeded numerical experiments, and an implementation audit. Its quantitative figures come from the reproducible Python supplement described below.
 
+## Repository map
+
+| Path | Role |
+| --- | --- |
+| [Medical_Imaging.pdf](Medical_Imaging.pdf), [Medical_Imaging.tex](Medical_Imaging.tex) | Revised report and its standalone LaTeX source |
+| [report/scripts/reproduce.py](report/scripts/reproduce.py) | Python/NumPy Monte Carlo supplement behind the report's numbers |
+| [report/data/](report/data/) | Committed outputs of the recorded supplement run |
+| [report/legacy/Medical_Imaging_original.pdf](report/legacy/Medical_Imaging_original.pdf) | Original Word-exported report |
+| [main.m](main.m), [EM_algorithm.m](EM_algorithm.m), [CRLB.m](CRLB.m), [random_model.m](random_model.m) | Legacy MATLAB experiment (see [below](#legacy-matlab-implementation)) |
+| [images/](images/) | Voxel diagrams and legacy figures |
+
+If you are new to the project, start with the report. To check its numbers, see [Reproduce the revised experiment](#reproduce-the-revised-experiment).
+
 ## Scope
 
 The estimator uses the **linear Poisson intensity model**
@@ -86,19 +99,36 @@ For $x=gb$, error is reported on the base-intensity scale, using $\widehat b=\wi
 
 ## Reproduce the revised experiment
 
-Requirements: Python 3 and NumPy. The recorded run used NumPy 2.3.5.
+Requirements: Python 3 and NumPy; nothing else is needed. According to `results.json`, the recorded run used Python 3.12.14 and NumPy 2.3.5.
 
 ```bash
 python3 report/scripts/reproduce.py --trials 10000 --iterations 1000 --seed 20260929
 ```
 
+These values are also the script's defaults, and `--help` lists the three options:
+
+- `--trials`: independent Poisson data sets drawn per gain (at least 2).
+- `--iterations`: EM updates applied to each data set (at least 1).
+- `--seed`: seed for `numpy.random.default_rng`.
+
 The study uses the predefined 16 × 9 matrix, base vector `[120, 240, 360, 180, 720, 300, 90, 420, 540]`, gains `[0.1, 1, 5, 10]`, and NumPy's PCG64 generator. Each gain has 10,000 independent Poisson trials. Initialization is a least-squares solve clipped elementwise to at least `1e-8`; no floor is added during EM updates.
 
-The script checks likelihood ascent at every update, a noiseless fixed point, and agreement between scalar and vectorized EM formulas. It writes:
+The script checks likelihood ascent at every update, a noiseless fixed point, and agreement between scalar and vectorized EM formulas. If any check fails, it stops with an `AssertionError`. It prints a console summary, including the elapsed time, and writes:
 
 - [results.json](report/data/results.json): settings, matrix, metrics, bias–variance decomposition, and diagnostics.
 - [summary.csv](report/data/summary.csv): results at 0, 20, 200, and 1,000 updates.
 - [trace.csv](report/data/trace.csv): every iteration for the first trial at gain one.
+
+**Outputs overwrite the committed data.** The script always writes to the `data/` directory beside its own `scripts/` directory, whatever the current working directory, and it has no option to redirect output. Repeated runs in the same numerical environment with the same seed and settings are intended to reproduce the output. Python and NumPy versions are recorded in the JSON, and changing versions or numerical libraries can change metadata or floating-point results. Elapsed time goes only to the console. Different simulation settings replace the recorded results and appear under `nondefault_settings`. For a quick smoke test that leaves the committed data alone, run a disposable copy from the repository root:
+
+```bash
+ct_smoke_dir=$(mktemp -d)
+mkdir -p "$ct_smoke_dir/report/scripts"
+cp report/scripts/reproduce.py "$ct_smoke_dir/report/scripts/"
+python3 "$ct_smoke_dir/report/scripts/reproduce.py" --trials 4 --iterations 3 --seed 20260929
+```
+
+That run writes to `$ct_smoke_dir/report/data/`. This small command passed the script's self-tests and likelihood checks during documentation validation; it does not reproduce the 10,000-trial result table. The full run keeps a 10,000 × 16 batch in memory per gain and takes noticeably longer.
 
 After 1,000 updates, the normalized MSE and true-parameter reference are:
 
@@ -109,7 +139,7 @@ After 1,000 updates, the normalized MSE and true-parameter reference are:
 | 5 | 42.49 | [42.05, 42.94] | 42.20 | 1.0069 |
 | 10 | 21.16 | [20.94, 21.39] | 21.10 | 1.0029 |
 
-Intervals quantify simulation uncertainty in the average MSE, not uncertainty in individual pixels. Proximity to the reference does not establish unbiasedness or efficiency. These are new controlled results, not recovered measurements from the original figures.
+Each interval is the MSE ± 1.96 Monte Carlo standard errors (`mse_base_units_mcse` in `summary.csv`). Intervals quantify simulation uncertainty in the average MSE, not uncertainty in individual pixels. Proximity to the reference does not establish unbiasedness or efficiency. These are new controlled results, not recovered measurements from the original figures.
 
 ## Legacy MATLAB implementation
 
@@ -126,9 +156,15 @@ The original PDF describes 200 Monte Carlo runs and gain 0.1–100; the checked-
 
 ## Editing the report
 
-Open [Medical_Imaging.tex](Medical_Imaging.tex) in the built-in LaTeX editor. It is standalone: vector diagrams and numerical plot coordinates are embedded. It can also be compiled with a standard LaTeX toolchain or Tectonic.
+[Medical_Imaging.tex](Medical_Imaging.tex) is standalone: the vector diagrams and numerical plot coordinates are embedded, and it does not read `report/data/`. Compile it with a standard LaTeX toolchain or Tectonic.
 
-Changing the simulation settings does not automatically rewrite the report. Update the embedded coordinates, tables, and narrative together after rerunning a modified experiment. The original Word-exported PDF is preserved in [report/legacy](report/legacy/).
+Nothing updates the report or `Medical_Imaging.pdf` automatically. After rerunning a modified experiment:
+
+1. Run `reproduce.py` with the new settings, which overwrites `report/data/`.
+2. Copy the new values from `summary.csv`, `trace.csv`, and `results.json` into the embedded plot coordinates, the tables, and the narrative in the `.tex` file, and update them together.
+3. Recompile the PDF and commit it alongside the updated source and data. This README's results table also needs to change.
+
+The original Word-exported PDF is preserved in [report/legacy](report/legacy/).
 
 ## References
 
