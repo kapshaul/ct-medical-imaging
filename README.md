@@ -28,7 +28,7 @@ If you are new to the project, start with the report. To check its numbers, see 
 The estimator uses the **linear Poisson intensity model**
 
 $$
-Y_i \sim \operatorname{Poisson}((Ax)_i), \qquad x \geq 0.
+Y_i \sim \mathrm{Poisson}((Ax)_i), \qquad x \geq 0.
 $$
 
 This is an educational inverse problem with the additive structure used in emission imaging. It is not a calibrated transmission X-ray CT model. Ideal transmission counts instead have a mean of the form
@@ -69,7 +69,7 @@ $$
 D(y\Vert Ax)=\sum_i\left[y_i\log\frac{y_i}{(Ax)_i}-y_i+(Ax)_i\right].
 $$
 
-Introduce independent hidden counts $N_{ij}\sim\operatorname{Poisson}(a_{ij}x_j)$ with $Y_i=\sum_jN_{ij}$. Their conditional expectations give the E step,
+Introduce independent hidden counts $N_{ij}\sim\mathrm{Poisson}(a_{ij}x_j)$ with $Y_i=\sum_jN_{ij}$. Their conditional expectations give the E step,
 
 $$
 \mathbb E[N_{ij}\mid Y_i=y_i,x^{(t)}]
@@ -90,7 +90,7 @@ Multiplication and division are elementwise where indicated. Start strictly posi
 At positive means,
 
 $$
-\mathcal I_x(x)=A^{\mathsf T}\operatorname{diag}\left(1/(Ax)_i\right)A.
+\mathcal I_x(x)=A^{\mathsf T}\mathrm{diag}\left(1/(Ax)_i\right)A.
 $$
 
 The ordinary Cramér–Rao covariance bound applies to unbiased estimators under regularity conditions. A nonnegative finite-iteration estimator can be biased, so its MSE is compared with this bound as a reference.
