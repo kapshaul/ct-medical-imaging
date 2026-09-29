@@ -1,193 +1,138 @@
-# Medical Imaging Computed Tomography
+# Poisson Reconstruction for Medical Imaging
 
 **Authors:** Yong-Hwan Lee and Tony Storey
 
-## Overview
+**Course:** ECE565 — Estimation, Filtering and Detection
 
-This project simulates the Expectation Maximization (EM) algorithm for removing Poisson noise from medical images. The EM algorithm is particularly useful in this context because it allows for the estimation of the underlying image by iteratively maximizing the likelihood function, which accounts for the statistical nature of Poisson noise. Given the quantum nature of particles and their discrete arrival times, Poisson noise often manifests in medical imaging, especially in modalities like X-ray Computed Tomography (CT). This noise can lead to significant artifacts in the reconstructed images, which might result in diagnostic inaccuracies.
+A nine-parameter tomography study of Poisson maximum likelihood, expectation maximization (EM), Fisher information, and gain-dependent estimation error.
 
-<br>
+**Read the revised [technical report](Medical_Imaging.pdf)** · [LaTeX source](Medical_Imaging.tex) · [original report](report/legacy/Medical_Imaging_original.pdf)
 
-<div align="center">
-    
-<img src="https://github.com/kapshaul/ct-medical-imaging/blob/master/images/CT%20scan.jpg" width="400">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-<img src="https://github.com/kapshaul/ct-medical-imaging/blob/master/images/Computed_tomography_of_human_brain.png" width="400">
+The report has been rebuilt with typeset derivations, vector diagrams, seeded numerical experiments, and an implementation audit. Its quantitative figures come from the reproducible Python supplement described below.
 
-**Figure 1**: Left - Illustration of a CT scan procedure; Right - CT scan images
+## Scope
 
-</div>
-
-<br>
-
-To mitigate these issues, the EM algorithm is applied as it effectively separates the noise from the actual signal in the image data. By modeling the image acquisition process and noise characteristics, the algorithm iteratively refines the image estimate, ultimately converging on a solution that minimizes the impact of noise.
-
-Find more details from the report: [PDF](https://github.com/kapshaul/ct-medical-imaging/blob/master/Medical_Imaging.pdf)
-
-## Problem Formulation
-
-### 1. Observation
-
-The distribution of $N_{ij}$ is given by,
+The estimator uses the **linear Poisson intensity model**
 
 $$
-N_{ij} \sim Pois(a_{ij} \lambda_j)
+Y_i \sim \operatorname{Poisson}((Ax)_i), \qquad x \geq 0.
 $$
 
-Here, $Pois$ denotes the Poisson distribution with parameter $\lambda$. Consider a model matrix $A$, where $A = (a_{ij})$ $i = 1, \dots, n$ $j = 1, \dots, m$.
-
-Then, the observations $Y_{i=1,...n}$ can be written as below,
+This is an educational inverse problem with the additive structure used in emission imaging. It is not a calibrated transmission X-ray CT model. Ideal transmission counts instead have a mean of the form
 
 $$
-Y_i = \sum_{j=1}^m N_{ij} \sim \sum_{j=1}^m Pois(a_{ij} \lambda_j)
+\bar y_i = I_{0,i}\exp\left(-\sum_j l_{ij}\alpha_j\right)+r_i.
 $$
 
-### 2. From voxels to a measurement
+Here, $\alpha_j$ denotes attenuation; the linear model's $x_j$ denotes intensity. Taking logarithms does not make noisy transmission data Poisson with a linear mean. The experiment uses a synthetic 3 × 3 field and establishes no clinical image-quality or dose-reduction claim.
 
-The body model is a single $3 \times 3 \times 1$ layer of voxels $p_1, \dots, p_9$, numbered row by row. Each voxel $p_j$ has an unknown absorption parameter $\lambda_j$. One observation $Y_i$ is the sum of hidden per-voxel counts $N_{ij}$, each with mean $a_{ij} \lambda_j$. Blue faces mark the voxels along the selected measurement path.
+## Geometry and observations
+
+The fixed sensing matrix has 16 measurements and nine parameters, with full column rank. Pixels are numbered row by row. For example,
+
+$$
+\mathbb E[Y_2]=x_4+x_5+x_6, \qquad
+\mathbb E[Y_{10}]=x_2+x_5+x_8.
+$$
 
 <p align="center">
-<img src="images/voxel-horizontal.svg" width="420" alt="Nine voxels in a 3x3 layer; the middle-row voxels p4, p5 and p6 are highlighted in blue and a horizontal ray through them ends in observation Y2">
-<img src="images/voxel-vertical.svg" width="420" alt="Nine voxels in a 3x3 layer; the middle-column voxels p2, p5 and p8 are highlighted in blue and a vertical ray through them ends in observation Y10">
+<img src="images/voxel-horizontal.svg" width="420" alt="A 3 by 3 voxel layer with middle-row pixels p4, p5 and p6 selected for measurement Y2">
+<img src="images/voxel-vertical.svg" width="420" alt="A 3 by 3 voxel layer with middle-column pixels p2, p5 and p8 selected for measurement Y10">
 </p>
 
-*Horizontal: measurement $Y_2$ through $p_4$, $p_5$, $p_6$. Vertical: measurement $Y_{10}$ through $p_2$, $p_5$, $p_8$.*
+These diagrams illustrate the predefined matrix in [main.m](main.m). The legacy MATLAB script subsequently replaces that matrix using [random_model.m](random_model.m). The revised report supplement deliberately keeps the predefined matrix fixed.
 
-The observed counts $Y_2$ and $Y_{10}$ are Poisson draws; their expected values are weighted sums over the highlighted voxels,
+## Likelihood and EM
 
-$$
-E[Y_2] = a_{2,4} \lambda_4 + a_{2,5} \lambda_5 + a_{2,6} \lambda_6
-$$
+For independent observations, the observed log likelihood is
 
 $$
-E[Y_{10}] = a_{10,2} \lambda_2 + a_{10,5} \lambda_5 + a_{10,8} \lambda_8
+\ell(x;y)=\sum_i\left[y_i\log(Ax)_i-(Ax)_i-\log\Gamma(y_i+1)\right].
 $$
 
-Only the totals $Y_i$ are observed. The EM algorithm below estimates the hidden per-voxel contributions $N_{ij}$ from each total and uses them to update every $\lambda_j$.
-
-**Simulation setup:** these paths illustrate the predefined matrix $A$ in [main.m](main.m) (horizontal rows 1–3 and vertical rows 9–11). The current simulation replaces $A$ with [random_model(m, n)](random_model.m), which selects three random voxels per observation; those voxels need not lie along a single row or column.
-
-## EM Algorithm
-
-### 1. Likelihood function
-
-For the observations, the likelihood function can be written as,
+Maximizing it is equivalent to minimizing the generalized KL divergence
 
 $$
-L(N_{ij})_ {ij}(\lambda) = \prod_i^n\prod_j^m e^{a_{ij} \lambda_j} \frac{(\lambda_j a_{ij})^{N_{ij}}}{N_{ij}!}
+D(y\Vert Ax)=\sum_i\left[y_i\log\frac{y_i}{(Ax)_i}-y_i+(Ax)_i\right].
 $$
 
-Then, log-likelihood function can be below,
+Introduce independent hidden counts $N_{ij}\sim\operatorname{Poisson}(a_{ij}x_j)$ with $Y_i=\sum_jN_{ij}$. Their conditional expectations give the E step,
 
 $$
-l(N_{ij})_ {ij}(\lambda) = \sum_i^n \sum_j^m (-\lambda_j a_{ij} + N_{ij}\log{(\lambda_j a_{ij})} -\log{(N_{ij}!)})
+\mathbb E[N_{ij}\mid Y_i=y_i,x^{(t)}]
+=\frac{y_i a_{ij}x_j^{(t)}}{(Ax^{(t)})_i}.
 $$
 
-Looking at the derivative of the log-likelihood with resprect to $\lambda_j$ we obtain
+The M step yields
 
 $$
-\frac{d}{d \lambda_{j}}E[l_{(N_{ij})_ {ij}} | (Y_{i})_ {i}] = \sum_{i=1}^n -a_{ij} + \frac{1}{\lambda_j} E[(N_{ij})_ {ij} | (Y_{i})_ {i}] \quad \forall j=1,...,m
+x^{(t+1)}=x^{(t)}\odot
+\frac{A^{\mathsf T}\left(y/(Ax^{(t)})\right)}{A^{\mathsf T}\mathbf 1}.
 $$
 
-### 2. Parameter Update
+Multiplication and division are elementwise where indicated. Start strictly positively, require nonzero column sensitivities, and treat zero counts explicitly. An exact EM update makes the likelihood nondecreasing; it does not guarantee a monotone decrease in reconstruction error.
 
-***Lemma***. Let $X_1$, $X_2$ be independent Poisson distributions with
+## Fisher information and error scale
 
-$$
-X_1 \sim Pois(\lambda_1)
-$$
+At positive means,
 
 $$
-X_2 \sim Pois(\lambda_2)
+\mathcal I_x(x)=A^{\mathsf T}\operatorname{diag}\left(1/(Ax)_i\right)A.
 $$
 
-Then, $X_1|(X_1 + X_2) \sim B(X_1 + X_2, \frac{\lambda_1}{\lambda_1+\lambda_2})$.
+The ordinary Cramér–Rao covariance bound applies to unbiased estimators under regularity conditions. A nonnegative finite-iteration estimator can be biased, so its MSE is compared with this bound as a reference.
 
-<br>
+For $x=gb$, error is reported on the base-intensity scale, using $\widehat b=\widehat x/g$. Both the parameter MSE and the true-parameter CRLB are divided by the **actual gain squared**. This normalized reference scales as $1/g$.
 
-By taking $X_1 = N_{ij}$ and $X_2 = Y_i − N_{ij}$, we find $N_{ij} |Y_i \sim B(Y_i, \frac{a_{ij}\lambda_j}{\sum_{k=1}^m a_{ik}\lambda_k})$
+## Reproduce the revised experiment
 
-Because the expectation of a Binomial distribution with parameters $n$, $p$ is $np$ we have,
+Requirements: Python 3 and NumPy. The recorded run used NumPy 2.3.5.
 
-$$
-E[N_{ij}|Y_i] = \frac{Y_i a_{ij}\lambda_j}{\sum_{k=1}^m a_{ik}\lambda_k}
-$$
-
-Therefore,
-
-$$
-\frac{d}{d \lambda_{j}}E[l_{(N_{ij})_ {ij}} | (Y_{i})_ {i}] = \sum_{i=1}^n -a_{ij} + \frac{1}{\lambda_j} \frac{Y_i a_{ij}\lambda_{j}^{old}}{\sum_{k=1}^{m} a_{ik}\lambda_{k}^{old}} \quad \forall j=1,...,m
-$$
-
-Setting the derivative to 0 to find a possible maximum gives,
-
-$$
-0 = \sum_{i=1}^n -a_{ij} + \frac{1}{\lambda_j} \frac{Y_i a_{ij}\lambda_{j}^{old}}{\sum_{k=1}^{m} a_{ik}\lambda_{k}^{old}}
-$$
-
-Solving for all $\lambda_j$ gives,
-
-$$
-\lambda_j = \frac{\lambda_{j}^{old}}{\sum_{i=1}^{n} a_{ij}} \sum_{i=1}^n \frac{Y_i a_{ij}}{\sum_{k=1}^{m} a_{ik}\lambda_{k}^{old}}
-$$
-
-### 3. EM Algorithm MATLAB code
-
-```matlab
-function X_new = EM_algorithm(A, y, X)    
-    n = length(X);
-    m = length(y);
-
-    % Starting EM Algorithm
-    for j = 1:n
-        for i = 1:m
-            den1 = A*X;
-            % Compute the probability
-            prob(i) = y(i)*A(i,j)/den1(i);
-        end
-        % E step to copute expectation
-        expectation(j) = sum(prob);
-        den2(j) = sum(A(:,j));
-        % M step to maximize likelihood
-        X_new(j) = X(j)/den2(j)*expectation(j);
-    end
-end
+```bash
+python3 report/scripts/reproduce.py --trials 10000 --iterations 1000 --seed 20260929
 ```
 
-### 4. Result
+The study uses the predefined 16 × 9 matrix, base vector `[120, 240, 360, 180, 720, 300, 90, 420, 540]`, gains `[0.1, 1, 5, 10]`, and NumPy's PCG64 generator. Each gain has 10,000 independent Poisson trials. Initialization is a least-squares solve clipped elementwise to at least `1e-8`; no floor is added during EM updates.
 
-The Expectation Maximization (EM) algorithm was implemented in MATLAB to reduce noise and estimate the 9 parameters from a 3x3 pixel matrix. To validate its performance, 10000 Monte Carlo simulations were conducted, and the resulting EM estimates were used to recover the underlying data.
+The script checks likelihood ascent at every update, a noiseless fixed point, and agreement between scalar and vectorized EM formulas. It writes:
 
-As shown in Figure 2, the EM algorithm exhibited a monotonically increasing likelihood as it converged toward a stable solution.
+- [results.json](report/data/results.json): settings, matrix, metrics, bias–variance decomposition, and diagnostics.
+- [summary.csv](report/data/summary.csv): results at 0, 20, 200, and 1,000 updates.
+- [trace.csv](report/data/trace.csv): every iteration for the first trial at gain one.
 
-The Cramér-Rao Lower Bound (CRLB) was used as a benchmark to assess the efficiency of the mean squared error (MSE) for each parameter. To further evaluate performance, the signal gain was varied from 0.1 to 10, with both the CRLB and MSE as illustrated in Figure 3.
+After 1,000 updates, the normalized MSE and true-parameter reference are:
 
-<br>
+| Gain | MSE / gain² | 95% Monte Carlo interval | CRLB / gain² | MSE / CRLB |
+| ---: | ---: | :---: | ---: | ---: |
+| 0.1 | 2,106.72 | [2,084.11, 2,129.34] | 2,110.20 | 0.9984 |
+| 1 | 210.66 | [208.43, 212.89] | 211.02 | 0.9983 |
+| 5 | 42.49 | [42.05, 42.94] | 42.20 | 1.0069 |
+| 10 | 21.16 | [20.94, 21.39] | 21.10 | 1.0029 |
 
-<div align="center">
-    
-<img src="https://github.com/kapshaul/ct-medical-imaging/blob/master/images/MLE.jpg" width="500">
+Intervals quantify simulation uncertainty in the average MSE, not uncertainty in individual pixels. Proximity to the reference does not establish unbiasedness or efficiency. These are new controlled results, not recovered measurements from the original figures.
 
-**Figure 2**: Log-likelihood maximization progress over iterations
+## Legacy MATLAB implementation
 
-</div>
+The historical `.m` files are preserved. Run `main.m` in MATLAB with Statistics and Machine Learning Toolbox for its random-number functions, but account for the issues documented in the report before interpreting the original plots:
 
-<br>
+- The random sensing matrix and base vector are unseeded; full rank is not checked.
+- Unconstrained least-squares initialization may produce negative coordinates.
+- Gain normalization uses the loop index `gain_val`, rather than `gain(gain_val)`.
+- The information matrix is evaluated at the estimate rather than the true parameter.
+- The likelihood uses a Stirling expression that needs a zero-count convention.
+- The gain plot uses point indices rather than the actual gain values.
 
-<div align="center">
-    
-<img src="https://github.com/kapshaul/ct-medical-imaging/blob/master/images/MSE.png" width="500">
+The original PDF describes 200 Monte Carlo runs and gain 0.1–100; the checked-in code specifies 10,000 runs and gains `[0.1, 1, 5, 10]`. The revised report explicitly separates that historical material from its new experiment.
 
-**Figure 3**: MSE comparison with CRLB
+## Editing the report
 
-</div>
+Open [Medical_Imaging.tex](Medical_Imaging.tex) in the built-in LaTeX editor. It is standalone: vector diagrams and numerical plot coordinates are embedded. It can also be compiled with a standard LaTeX toolchain or Tectonic.
 
-## Implementation
+Changing the simulation settings does not automatically rewrite the report. Update the embedded coordinates, tables, and narrative together after rerunning a modified experiment. The original Word-exported PDF is preserved in [report/legacy](report/legacy/).
 
-To implement the code, follow these steps:
-1. Clone the repository.
-2. Run the `main.m` file to complete the EM algorithm and estimate the body model matrix coefficients.
-   
----
+## References
 
-## Reference
-[1] C. F. van Oosten, "The EM-algorithm for Poisson data," Bachelor's thesis, Mathematical Institute, Leiden University, Leiden, The Netherlands, Aug. 2014.
+1. A. P. Dempster, N. M. Laird, and D. B. Rubin. “Maximum likelihood from incomplete data via the EM algorithm.” *JRSS Series B*, 39(1), 1–22, 1977. [DOI](https://doi.org/10.1111/j.2517-6161.1977.tb01600.x).
+2. L. A. Shepp and Y. Vardi. “Maximum likelihood reconstruction for emission tomography.” *IEEE Transactions on Medical Imaging*, 1(2), 113–122, 1982. [DOI](https://doi.org/10.1109/TMI.1982.4307558).
+3. E. A. Rashed and H. Kudo. “Towards high-resolution synchrotron radiation imaging with statistical iterative reconstruction.” *Journal of Synchrotron Radiation*, 20(1), 116–124, 2013. [DOI](https://doi.org/10.1107/S0909049512041301).
+4. Q. Ding, Y. Long, X. Zhang, and J. A. Fessler. “Statistical image reconstruction using mixed Poisson–Gaussian noise model for X-ray CT.” 2018. [arXiv](https://arxiv.org/abs/1801.09533).

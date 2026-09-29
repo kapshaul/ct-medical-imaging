@@ -1,0 +1,1151 @@
+{
+  "schema": "ct-poisson-em-supplement/v1",
+  "config": {
+    "trials": 10000,
+    "iterations": 1000,
+    "seed": 20260929,
+    "defaults": {
+      "trials": 10000,
+      "iterations": 1000,
+      "seed": 20260929
+    },
+    "nondefault_settings": {},
+    "gains": [
+      0.1,
+      1.0,
+      5.0,
+      10.0
+    ],
+    "rng": "numpy.random.default_rng(seed); one Poisson batch per gain, in gain order",
+    "bit_generator": "PCG64",
+    "numpy_version": "2.3.5",
+    "python_version": "3.12.14",
+    "mc_checkpoints": [
+      0,
+      20,
+      200,
+      1000
+    ],
+    "init_floor": 1e-08,
+    "loglik_rtol": 1e-09,
+    "converged_threshold": 1e-06,
+    "percentile_method": "numpy default (linear)",
+    "note": "elapsed time is printed to the console only, so this file is deterministic"
+  },
+  "model": {
+    "A": [
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        1
+      ],
+      [
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1,
+        0
+      ],
+      [
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1
+      ],
+      [
+        0,
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        1,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1,
+        0
+      ],
+      [
+        0,
+        0,
+        1,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1
+      ],
+      [
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    ],
+    "base_b": [
+      120.0,
+      240.0,
+      360.0,
+      180.0,
+      720.0,
+      300.0,
+      90.0,
+      420.0,
+      540.0
+    ],
+    "m_observations": 16,
+    "n_parameters": 9,
+    "rank": 9,
+    "condition_number_2norm": 2.545463161176507,
+    "column_sensitivities": [
+      4.0,
+      4.0,
+      4.0,
+      4.0,
+      4.0,
+      4.0,
+      4.0,
+      4.0,
+      4.0
+    ],
+    "x_true": "gain * base_b"
+  },
+  "definitions": {
+    "mse_base_units": "mean over trials of mean_j (X_j/gain - b_j)^2  (= MSE / gain^2)",
+    "mse_base_units_mcse": "std(per-trial loss, ddof=1) / sqrt(trials)",
+    "crlb_base_units": "trace(F^-1) / (9 gain^2), F = A^T diag(1/(A x_true)) A",
+    "crlb_param_units": "trace(F^-1) / 9",
+    "bias_base_units": "mean over trials of X/gain, minus b",
+    "bias_sq_base_units": "||bias||^2 / 9",
+    "variance_base_units": "mean_j var(X_j/gain, ddof=0); bias_sq + variance = mse",
+    "relative_change": "||X_k - X_{k-1}|| / max(||X_{k-1}||, tiny), per trial",
+    "exact_loglik": "sum_i y_i log mu_i - mu_i - lgamma(y_i + 1), 0 log mu := 0",
+    "iteration_0": "clipped least-squares initialization, before any EM step"
+  },
+  "method_notes": [
+    "Predefined A from main.m is used; random_model is not called.",
+    "Initialization changed from legacy inv(A'A)A'y to np.linalg.lstsq clipped to >= 1e-8.",
+    "No floor is added to means or parameters during EM iterations.",
+    "Log likelihood is exact (lgamma), replacing the legacy Stirling approximation.",
+    "CRLB uses the true x; legacy code evaluated it at the current estimate.",
+    "Normalization is by gain^2; legacy code divided by the gain index squared."
+  ],
+  "self_tests": {
+    "noise_free_fixed_point": {
+      "description": "y = A b (real valued); one EM step from X = b",
+      "max_relative_deviation": 0.0,
+      "passed": true
+    },
+    "vectorized_vs_scalar_update": {
+      "description": "batched update vs. loop transcription of EM_algorithm.m",
+      "y_test": [
+        4.0,
+        11.0,
+        18.0,
+        25.0,
+        3.0,
+        10.0,
+        17.0,
+        24.0,
+        2.0,
+        9.0,
+        16.0,
+        23.0,
+        1.0,
+        8.0,
+        15.0,
+        22.0
+      ],
+      "x_test": [
+        2.2,
+        3.4,
+        4.6,
+        2.8,
+        8.2,
+        4.0,
+        1.9,
+        5.2,
+        6.4
+      ],
+      "max_relative_difference": 0.0,
+      "passed": true
+    }
+  },
+  "gains": [
+    {
+      "gain": 0.1,
+      "x_true": [
+        12.0,
+        24.0,
+        36.0,
+        18.0,
+        72.0,
+        30.0,
+        9.0,
+        42.0,
+        54.0
+      ],
+      "crlb": {
+        "evaluated_at": "true x",
+        "trace_param_units": 189.91772451388215,
+        "trace_over_9_param_units": 21.10196939043135,
+        "trace_over_9_gain2_base_units": 2110.1969390431345,
+        "diag_param_units": [
+          8.786497339791346,
+          21.15206384768424,
+          19.7473946870147,
+          18.57916936923142,
+          36.545596072875334,
+          25.73278882297624,
+          7.213170116620026,
+          26.03612425258343,
+          26.124920005105434
+        ]
+      },
+      "initialization": {
+        "method": "least squares, then elementwise max(., 1e-8)",
+        "fraction_trials_any_negative_ls_coordinate": 0.0257,
+        "fraction_trials_any_clipped_coordinate": 0.0257,
+        "fraction_trials_all_zero_counts": 0.0
+      },
+      "monotonicity": {
+        "quantity": "exact observed log likelihood, per trial, consecutive iterations",
+        "tolerance": "decrease allowed up to 1e-9 * (1 + |previous loglik|)",
+        "max_loglik_decrease": 9.166001291305292e-13,
+        "min_loglik_increment": -9.166001291305292e-13,
+        "passed": true
+      },
+      "final_relative_change": {
+        "median": 0.0,
+        "p95": 1.264609434445823e-16,
+        "max": 2.377352221563153e-16,
+        "fraction_below_1e-6": 1.0
+      },
+      "checkpoints": [
+        {
+          "iteration": 0,
+          "mse_base_units": 2527.636681257812,
+          "mse_base_units_mcse": 13.161674796175783,
+          "mse_param_units": 25.276366812578125,
+          "crlb_base_units": 2110.1969390431345,
+          "crlb_param_units": 21.10196939043135,
+          "ratio_mse_to_crlb": 1.19782027662497,
+          "bias_sq_base_units": 0.25544633230524755,
+          "variance_base_units": 2527.381234925507,
+          "bias_base_units": [
+            -0.5745690472893443,
+            -0.04349523809472089,
+            0.6661142857141158,
+            0.41269523809518205,
+            0.8271428571423485,
+            0.28769523809506836,
+            0.5439761927160447,
+            -0.013780952380955114,
+            -0.538457142857169
+          ],
+          "mean_exact_loglik": -56.62448878938153,
+          "relative_change": null
+        },
+        {
+          "iteration": 20,
+          "mse_base_units": 2106.876751373072,
+          "mse_base_units_mcse": 11.544112152959057,
+          "mse_param_units": 21.06876751373072,
+          "crlb_base_units": 2110.1969390431345,
+          "crlb_param_units": 21.10196939043135,
+          "ratio_mse_to_crlb": 0.9984265981962952,
+          "bias_sq_base_units": 0.1383974639810446,
+          "variance_base_units": 2106.738353909092,
+          "bias_base_units": [
+            0.25655133457246393,
+            -0.1580311991583585,
+            0.3390414053902191,
+            -0.1120387042516029,
+            0.8928868335110565,
+            0.25260343761925697,
+            0.0228142529772839,
+            -0.0027653860417444776,
+            -0.4070619746161128
+          ],
+          "mean_exact_loglik": -50.733795119825004,
+          "relative_change": {
+            "median": 9.369372574609768e-05,
+            "p95": 0.00031954571716123043,
+            "max": 0.0016214701757167624,
+            "fraction_below_1e-6": 0.0
+          }
+        },
+        {
+          "iteration": 200,
+          "mse_base_units": 2106.722195123985,
+          "mse_base_units_mcse": 11.538537745959339,
+          "mse_param_units": 21.06722195123985,
+          "crlb_base_units": 2110.1969390431345,
+          "crlb_param_units": 21.10196939043135,
+          "ratio_mse_to_crlb": 0.9983533556253166,
+          "bias_sq_base_units": 0.14016802435344114,
+          "variance_base_units": 2106.5820270996337,
+          "bias_base_units": [
+            0.21154332373622253,
+            -0.20642239752839942,
+            0.37467566555221765,
+            0.0004862787849333472,
+            0.912354379049475,
+            0.23909464905818822,
+            -0.05890725200104896,
+            -0.013926571954016254,
+            -0.37489807470092273
+          ],
+          "mean_exact_loglik": -50.73350929401183,
+          "relative_change": {
+            "median": 0.0,
+            "p95": 4.444733555316813e-15,
+            "max": 2.2113291026705198e-07,
+            "fraction_below_1e-6": 1.0
+          }
+        },
+        {
+          "iteration": 1000,
+          "mse_base_units": 2106.7221724054025,
+          "mse_base_units_mcse": 11.5385372420475,
+          "mse_param_units": 21.067221724054026,
+          "crlb_base_units": 2110.1969390431345,
+          "crlb_param_units": 21.10196939043135,
+          "ratio_mse_to_crlb": 0.9983533448592208,
+          "bias_sq_base_units": 0.14016802115815954,
+          "variance_base_units": 2106.582004384247,
+          "bias_base_units": [
+            0.21154319811644484,
+            -0.20642259595268797,
+            0.37467573468421733,
+            0.0004867733053686152,
+            0.9123543345435792,
+            0.2390946679210515,
+            -0.05890735809639125,
+            -0.013926753412476955,
+            -0.37489800111177374
+          ],
+          "mean_exact_loglik": -50.733509294011135,
+          "relative_change": {
+            "median": 0.0,
+            "p95": 1.264609434445823e-16,
+            "max": 2.377352221563153e-16,
+            "fraction_below_1e-6": 1.0
+          }
+        }
+      ]
+    },
+    {
+      "gain": 1.0,
+      "x_true": [
+        120.0,
+        240.0,
+        360.0,
+        180.0,
+        720.0,
+        300.0,
+        90.0,
+        420.0,
+        540.0
+      ],
+      "crlb": {
+        "evaluated_at": "true x",
+        "trace_param_units": 1899.1772451388215,
+        "trace_over_9_param_units": 211.0196939043135,
+        "trace_over_9_gain2_base_units": 211.0196939043135,
+        "diag_param_units": [
+          87.8649733979134,
+          211.52063847684238,
+          197.47394687014707,
+          185.7916936923142,
+          365.4559607287533,
+          257.3278882297623,
+          72.13170116620023,
+          260.36124252583426,
+          261.2492000510543
+        ]
+      },
+      "initialization": {
+        "method": "least squares, then elementwise max(., 1e-8)",
+        "fraction_trials_any_negative_ls_coordinate": 0.0,
+        "fraction_trials_any_clipped_coordinate": 0.0,
+        "fraction_trials_all_zero_counts": 0.0
+      },
+      "monotonicity": {
+        "quantity": "exact observed log likelihood, per trial, consecutive iterations",
+        "tolerance": "decrease allowed up to 1e-9 * (1 + |previous loglik|)",
+        "max_loglik_decrease": 1.1823431123048067e-11,
+        "min_loglik_increment": -1.1823431123048067e-11,
+        "passed": true
+      },
+      "final_relative_change": {
+        "median": 0.0,
+        "p95": 1.0823603516779303e-16,
+        "max": 2.1256975038292222e-16,
+        "fraction_below_1e-6": 1.0
+      },
+      "checkpoints": [
+        {
+          "iteration": 0,
+          "mse_base_units": 254.29771568279165,
+          "mse_base_units_mcse": 1.3001280863194193,
+          "mse_param_units": 254.29771568279165,
+          "crlb_base_units": 211.0196939043135,
+          "crlb_param_units": 211.0196939043135,
+          "ratio_mse_to_crlb": 1.2050899656697565,
+          "bias_sq_base_units": 0.013053710089624613,
+          "variance_base_units": 254.284661972702,
+          "bias_base_units": [
+            -0.05269380952408653,
+            -0.09869666666611465,
+            -0.13974619047627357,
+            0.029008095238083342,
+            -0.17085000000042783,
+            0.12906523809505188,
+            -0.05166047619061942,
+            -0.11239666666665471,
+            0.15312047619045188
+          ],
+          "mean_exact_loglik": -70.9817017590386,
+          "relative_change": null
+        },
+        {
+          "iteration": 20,
+          "mse_base_units": 210.65949833611705,
+          "mse_base_units_mcse": 1.1380200068903974,
+          "mse_param_units": 210.65949833611705,
+          "crlb_base_units": 211.0196939043135,
+          "crlb_param_units": 211.0196939043135,
+          "ratio_mse_to_crlb": 0.9982930713170318,
+          "bias_sq_base_units": 0.009817120473559983,
+          "variance_base_units": 210.64968121564345,
+          "bias_base_units": [
+            -0.056708415556769864,
+            -0.07836746229105529,
+            -0.11374172153722384,
+            -0.05504698637921024,
+            -0.17490425259904896,
+            0.15414734637016636,
+            0.02523738100170192,
+            -0.07516962527705573,
+            0.04887873626785222
+          ],
+          "mean_exact_loglik": -69.19848913338065,
+          "relative_change": {
+            "median": 2.7320554019205854e-05,
+            "p95": 7.239116957530865e-05,
+            "max": 0.00016009930579479275,
+            "fraction_below_1e-6": 0.0001
+          }
+        },
+        {
+          "iteration": 200,
+          "mse_base_units": 210.65704746131058,
+          "mse_base_units_mcse": 1.1378994087925278,
+          "mse_param_units": 210.65704746131058,
+          "crlb_base_units": 211.0196939043135,
+          "crlb_param_units": 211.0196939043135,
+          "ratio_mse_to_crlb": 0.9982814568806675,
+          "bias_sq_base_units": 0.009664301098548232,
+          "variance_base_units": 210.64738316021234,
+          "bias_base_units": [
+            -0.059861095950239473,
+            -0.08120202214317374,
+            -0.11136215764872759,
+            -0.04796960660209493,
+            -0.17335745193690855,
+            0.15274851138491385,
+            0.019666223349943834,
+            -0.0755372595470476,
+            0.051199859097437184
+          ],
+          "mean_exact_loglik": -69.19841290686225,
+          "relative_change": {
+            "median": 0.0,
+            "p95": 1.093352653096028e-16,
+            "max": 2.0056786247557377e-16,
+            "fraction_below_1e-6": 1.0
+          }
+        },
+        {
+          "iteration": 1000,
+          "mse_base_units": 210.65704746131058,
+          "mse_base_units_mcse": 1.1378994087925278,
+          "mse_param_units": 210.65704746131058,
+          "crlb_base_units": 211.0196939043135,
+          "crlb_param_units": 211.0196939043135,
+          "ratio_mse_to_crlb": 0.9982814568806675,
+          "bias_sq_base_units": 0.009664301098548232,
+          "variance_base_units": 210.64738316021234,
+          "bias_base_units": [
+            -0.059861095950239473,
+            -0.08120202214317374,
+            -0.11136215764872759,
+            -0.04796960660209493,
+            -0.17335745193690855,
+            0.15274851138491385,
+            0.019666223349943834,
+            -0.0755372595470476,
+            0.051199859097437184
+          ],
+          "mean_exact_loglik": -69.19841290686225,
+          "relative_change": {
+            "median": 0.0,
+            "p95": 1.0823603516779303e-16,
+            "max": 2.1256975038292222e-16,
+            "fraction_below_1e-6": 1.0
+          }
+        }
+      ]
+    },
+    {
+      "gain": 5.0,
+      "x_true": [
+        600.0,
+        1200.0,
+        1800.0,
+        900.0,
+        3600.0,
+        1500.0,
+        450.0,
+        2100.0,
+        2700.0
+      ],
+      "crlb": {
+        "evaluated_at": "true x",
+        "trace_param_units": 9495.886225694108,
+        "trace_over_9_param_units": 1055.0984695215675,
+        "trace_over_9_gain2_base_units": 42.20393878086271,
+        "diag_param_units": [
+          439.3248669895671,
+          1057.603192384212,
+          987.3697343507351,
+          928.9584684615709,
+          1827.2798036437669,
+          1286.6394411488118,
+          360.65850583100115,
+          1301.8062126291716,
+          1306.2460002552716
+        ]
+      },
+      "initialization": {
+        "method": "least squares, then elementwise max(., 1e-8)",
+        "fraction_trials_any_negative_ls_coordinate": 0.0,
+        "fraction_trials_any_clipped_coordinate": 0.0,
+        "fraction_trials_all_zero_counts": 0.0
+      },
+      "monotonicity": {
+        "quantity": "exact observed log likelihood, per trial, consecutive iterations",
+        "tolerance": "decrease allowed up to 1e-9 * (1 + |previous loglik|)",
+        "max_loglik_decrease": 7.867129170335829e-11,
+        "min_loglik_increment": -7.867129170335829e-11,
+        "passed": true
+      },
+      "final_relative_change": {
+        "median": 0.0,
+        "p95": 9.63335429467855e-17,
+        "max": 3.1454501349239226e-16,
+        "fraction_below_1e-6": 1.0
+      },
+      "checkpoints": [
+        {
+          "iteration": 0,
+          "mse_base_units": 51.04042930491811,
+          "mse_base_units_mcse": 0.2612422021478211,
+          "mse_param_units": 1276.010732622953,
+          "crlb_base_units": 42.20393878086271,
+          "crlb_param_units": 1055.0984695215675,
+          "ratio_mse_to_crlb": 1.2093759677251332,
+          "bias_sq_base_units": 0.008979766565684536,
+          "variance_base_units": 51.03144953835242,
+          "bias_base_units": [
+            -0.022528952381250633,
+            0.029121333333847588,
+            -0.011749904762041297,
+            -0.08900533333337535,
+            0.0038571428567593102,
+            0.16035752380935264,
+            0.15343009523795104,
+            -0.019855809523789958,
+            -0.14743752380945807
+          ],
+          "mean_exact_loglik": -83.81013531524434,
+          "relative_change": null
+        },
+        {
+          "iteration": 20,
+          "mse_base_units": 42.495205123086976,
+          "mse_base_units_mcse": 0.22835362079560897,
+          "mse_param_units": 1062.3801280771745,
+          "crlb_base_units": 42.20393878086271,
+          "crlb_param_units": 1055.0984695215675,
+          "ratio_mse_to_crlb": 1.0069014018747544,
+          "bias_sq_base_units": 0.006379487089703314,
+          "variance_base_units": 42.48882563599728,
+          "bias_base_units": [
+            0.07748367571537074,
+            -0.030135033713008852,
+            0.004526762016325847,
+            -0.04944119996787322,
+            0.010760504404743187,
+            0.16520775768611884,
+            0.036025363544609945,
+            -0.03928617805183876,
+            -0.1333716516367076
+          ],
+          "mean_exact_loglik": -82.07863107726983,
+          "relative_change": {
+            "median": 1.1845836903129652e-05,
+            "p95": 3.220341829378628e-05,
+            "max": 5.9886257679325125e-05,
+            "fraction_below_1e-6": 0.0015
+          }
+        },
+        {
+          "iteration": 200,
+          "mse_base_units": 42.4933091754054,
+          "mse_base_units_mcse": 0.22833371935993538,
+          "mse_param_units": 1062.3327293851348,
+          "crlb_base_units": 42.20393878086271,
+          "crlb_param_units": 1055.0984695215675,
+          "ratio_mse_to_crlb": 1.0068564783975544,
+          "bias_sq_base_units": 0.006344899994342566,
+          "variance_base_units": 42.48696427541109,
+          "bias_base_units": [
+            0.07673422821362408,
+            -0.03234483043220848,
+            0.005630529801749162,
+            -0.046298003625366846,
+            0.010868125401202633,
+            0.16568571459583836,
+            0.03433614400432816,
+            -0.040006750456143436,
+            -0.13283515750845254
+          ],
+          "mean_exact_loglik": -82.07856077939125,
+          "relative_change": {
+            "median": 0.0,
+            "p95": 9.698564880456375e-17,
+            "max": 2.2828430258764235e-16,
+            "fraction_below_1e-6": 1.0
+          }
+        },
+        {
+          "iteration": 1000,
+          "mse_base_units": 42.4933091754054,
+          "mse_base_units_mcse": 0.2283337193599354,
+          "mse_param_units": 1062.3327293851348,
+          "crlb_base_units": 42.20393878086271,
+          "crlb_param_units": 1055.0984695215675,
+          "ratio_mse_to_crlb": 1.0068564783975544,
+          "bias_sq_base_units": 0.006344899994342566,
+          "variance_base_units": 42.48696427541109,
+          "bias_base_units": [
+            0.07673422821362408,
+            -0.03234483043220848,
+            0.005630529801749162,
+            -0.046298003625366846,
+            0.010868125401202633,
+            0.16568571459583836,
+            0.03433614400432816,
+            -0.040006750456143436,
+            -0.13283515750845254
+          ],
+          "mean_exact_loglik": -82.07856077939125,
+          "relative_change": {
+            "median": 0.0,
+            "p95": 9.63335429467855e-17,
+            "max": 3.1454501349239226e-16,
+            "fraction_below_1e-6": 1.0
+          }
+        }
+      ]
+    },
+    {
+      "gain": 10.0,
+      "x_true": [
+        1200.0,
+        2400.0,
+        3600.0,
+        1800.0,
+        7200.0,
+        3000.0,
+        900.0,
+        4200.0,
+        5400.0
+      ],
+      "crlb": {
+        "evaluated_at": "true x",
+        "trace_param_units": 18991.772451388217,
+        "trace_over_9_param_units": 2110.196939043135,
+        "trace_over_9_gain2_base_units": 21.101969390431353,
+        "diag_param_units": [
+          878.6497339791342,
+          2115.206384768424,
+          1974.7394687014703,
+          1857.9169369231417,
+          3654.5596072875337,
+          2573.2788822976236,
+          721.3170116620023,
+          2603.612425258343,
+          2612.492000510543
+        ]
+      },
+      "initialization": {
+        "method": "least squares, then elementwise max(., 1e-8)",
+        "fraction_trials_any_negative_ls_coordinate": 0.0,
+        "fraction_trials_any_clipped_coordinate": 0.0,
+        "fraction_trials_all_zero_counts": 0.0
+      },
+      "monotonicity": {
+        "quantity": "exact observed log likelihood, per trial, consecutive iterations",
+        "tolerance": "decrease allowed up to 1e-9 * (1 + |previous loglik|)",
+        "max_loglik_decrease": 1.6189005691558123e-10,
+        "min_loglik_increment": -1.6189005691558123e-10,
+        "passed": true
+      },
+      "final_relative_change": {
+        "median": 0.0,
+        "p95": 9.077220248536694e-17,
+        "max": 2.3139513663307028e-16,
+        "fraction_below_1e-6": 1.0
+      },
+      "checkpoints": [
+        {
+          "iteration": 0,
+          "mse_base_units": 25.408783194846944,
+          "mse_base_units_mcse": 0.13255688316085815,
+          "mse_param_units": 2540.8783194846947,
+          "crlb_base_units": 21.101969390431353,
+          "crlb_param_units": 2110.196939043135,
+          "ratio_mse_to_crlb": 1.2040953488620123,
+          "bias_sq_base_units": 0.0011395093988844495,
+          "variance_base_units": 25.407643685448058,
+          "bias_base_units": [
+            -0.05942892857170534,
+            0.008409642857628796,
+            0.06060535714271964,
+            0.008912499999979673,
+            -0.016289642857486797,
+            0.007729642856986629,
+            0.011776785714133098,
+            -0.02295750000013186,
+            0.04370107142858615
+          ],
+          "mean_exact_loglik": -89.33431982785368,
+          "relative_change": null
+        },
+        {
+          "iteration": 20,
+          "mse_base_units": 21.16228791157401,
+          "mse_base_units_mcse": 0.11533057663606007,
+          "mse_param_units": 2116.228791157401,
+          "crlb_base_units": 21.101969390431353,
+          "crlb_param_units": 2110.196939043135,
+          "ratio_mse_to_crlb": 1.0028584308898678,
+          "bias_sq_base_units": 0.00048124099445949416,
+          "variance_base_units": 21.161806670579537,
+          "bias_base_units": [
+            -0.035333176778237885,
+            0.013531184836296006,
+            0.04034815177033124,
+            -0.0010450258973548898,
+            -0.008793846967023455,
+            0.010926458997516875,
+            -0.008518198007934075,
+            -0.011886474300638383,
+            0.0293259263469281
+          ],
+          "mean_exact_loglik": -87.61177147101613,
+          "relative_change": {
+            "median": 8.187019613355312e-06,
+            "p95": 2.2073943524230293e-05,
+            "max": 5.505745615554053e-05,
+            "fraction_below_1e-6": 0.0042
+          }
+        },
+        {
+          "iteration": 200,
+          "mse_base_units": 21.16362073209079,
+          "mse_base_units_mcse": 0.11533311703909897,
+          "mse_param_units": 2116.362073209079,
+          "crlb_base_units": 21.101969390431353,
+          "crlb_param_units": 2110.196939043135,
+          "ratio_mse_to_crlb": 1.0029215918438112,
+          "bias_sq_base_units": 0.0004862825602715796,
+          "variance_base_units": 21.163134449530556,
+          "bias_base_units": [
+            -0.03559247602964888,
+            0.013187347055236387,
+            0.04059739638529436,
+            -0.0003677095461114277,
+            -0.00864562091010157,
+            0.01083016249179991,
+            -0.009083237356662721,
+            -0.011892810568838286,
+            0.029521948478532067
+          ],
+          "mean_exact_loglik": -87.61170389821905,
+          "relative_change": {
+            "median": 0.0,
+            "p95": 8.936454534464e-17,
+            "max": 2.3139513663307028e-16,
+            "fraction_below_1e-6": 1.0
+          }
+        },
+        {
+          "iteration": 1000,
+          "mse_base_units": 21.16362073209079,
+          "mse_base_units_mcse": 0.11533311703909897,
+          "mse_param_units": 2116.362073209079,
+          "crlb_base_units": 21.101969390431353,
+          "crlb_param_units": 2110.196939043135,
+          "ratio_mse_to_crlb": 1.0029215918438112,
+          "bias_sq_base_units": 0.0004862825602715796,
+          "variance_base_units": 21.163134449530556,
+          "bias_base_units": [
+            -0.03559247602964888,
+            0.013187347055236387,
+            0.04059739638529436,
+            -0.0003677095461114277,
+            -0.00864562091010157,
+            0.01083016249179991,
+            -0.009083237356662721,
+            -0.011892810568838286,
+            0.029521948478532067
+          ],
+          "mean_exact_loglik": -87.61170389821906,
+          "relative_change": {
+            "median": 0.0,
+            "p95": 9.077220248536694e-17,
+            "max": 2.3139513663307028e-16,
+            "fraction_below_1e-6": 1.0
+          }
+        }
+      ]
+    }
+  ],
+  "trace": {
+    "source": "first Monte Carlo replicate at gain = 1.0",
+    "units": "theta in parameter units (equal to base units at gain 1)",
+    "full_trace_file": "trace.csv",
+    "checkpoints": [
+      {
+        "iteration": 0,
+        "exact_loglik": -68.83661099568224,
+        "mse_base_units": 36.07049193751585,
+        "theta": [
+          114.83571428571399,
+          229.04523809523846,
+          359.692857142857,
+          187.71190476190492,
+          719.9642857142854,
+          299.1404761904762,
+          80.69285714285701,
+          420.4738095238096,
+          545.5500000000001
+        ],
+        "relative_change": null
+      },
+      {
+        "iteration": 1,
+        "exact_loglik": -67.99561351609117,
+        "mse_base_units": 36.46925116301297,
+        "theta": [
+          114.79288464419712,
+          227.73597211332347,
+          360.3189742410335,
+          187.166522818989,
+          719.9003499063916,
+          297.9185685950602,
+          85.0321947233221,
+          419.758244145972,
+          548.376288811711
+        ],
+        "relative_change": 0.004866034410667492
+      },
+      {
+        "iteration": 2,
+        "exact_loglik": -67.66018168448068,
+        "mse_base_units": 37.463691160370075,
+        "theta": [
+          114.45463093503838,
+          227.0974151766706,
+          360.3425915957323,
+          186.53975289098688,
+          719.290416129173,
+          297.2270970897234,
+          87.84881228581287,
+          419.0684674451495,
+          549.1308164517131
+        ],
+        "relative_change": 0.002851840625784318
+      },
+      {
+        "iteration": 5,
+        "exact_loglik": -67.4119356272497,
+        "mse_base_units": 37.4177832904544,
+        "theta": [
+          113.56925556547422,
+          227.14215866101637,
+          360.17751564294286,
+          185.16695213347506,
+          718.5400158073898,
+          296.96820550224135,
+          91.87793449224357,
+          418.304439124453,
+          549.253523070764
+        ],
+        "relative_change": 0.0008885640776150267
+      },
+      {
+        "iteration": 10,
+        "exact_loglik": -67.37543293077039,
+        "mse_base_units": 35.1815136164578,
+        "theta": [
+          113.05442366408727,
+          227.96308711772312,
+          359.85012490912754,
+          183.9738414363047,
+          718.3237637554153,
+          297.18241702309325,
+          93.56120124437241,
+          418.1087236130388,
+          548.9824172368377
+        ],
+        "relative_change": 0.00023434351806214855
+      },
+      {
+        "iteration": 20,
+        "exact_loglik": -67.37257534997377,
+        "mse_base_units": 33.49133015344902,
+        "theta": [
+          112.9874697878157,
+          228.5257857815287,
+          359.6082019636367,
+          183.33104006574968,
+          718.3267548767828,
+          297.16364090784094,
+          93.97717110840856,
+          418.17274546116516,
+          548.9071900470716
+        ],
+        "relative_change": 3.046711747249296e-05
+      },
+      {
+        "iteration": 50,
+        "exact_loglik": -67.37252754938595,
+        "mse_base_units": 33.17051055160218,
+        "theta": [
+          112.99800497843349,
+          228.6256478694796,
+          359.5663785117954,
+          183.22198126632603,
+          718.3369887664455,
+          297.1271590392966,
+          94.01287072561696,
+          418.2096125808772,
+          548.9013562617291
+        ],
+        "relative_change": 1.03618768151341e-07
+      },
+      {
+        "iteration": 100,
+        "exact_loglik": -67.3725275488705,
+        "mse_base_units": 33.16943207395041,
+        "theta": [
+          112.99805287304211,
+          228.6259832619277,
+          359.56624987504557,
+          183.22162565693895,
+          718.3370312701919,
+          297.12698423351515,
+          94.01295950087865,
+          418.2097703627135,
+          548.9013429657465
+        ],
+        "relative_change": 7.741891108731702e-12
+      },
+      {
+        "iteration": 200,
+        "exact_loglik": -67.37252754886742,
+        "mse_base_units": 33.16943199368424,
+        "theta": [
+          112.99805287656214,
+          228.62598328701333,
+          359.56624986549707,
+          183.22162563050318,
+          718.3370312733792,
+          297.1269842202442,
+          94.01295950744291,
+          418.2097703745339,
+          548.9013429648242
+        ],
+        "relative_change": 1.8531694391087229e-16
+      },
+      {
+        "iteration": 500,
+        "exact_loglik": -67.37252754886742,
+        "mse_base_units": 33.16943199368424,
+        "theta": [
+          112.99805287656214,
+          228.62598328701333,
+          359.56624986549707,
+          183.22162563050318,
+          718.3370312733792,
+          297.1269842202442,
+          94.01295950744291,
+          418.2097703745339,
+          548.9013429648242
+        ],
+        "relative_change": 1.8531694391087229e-16
+      },
+      {
+        "iteration": 1000,
+        "exact_loglik": -67.37252754886742,
+        "mse_base_units": 33.16943199368424,
+        "theta": [
+          112.99805287656214,
+          228.62598328701333,
+          359.56624986549707,
+          183.22162563050318,
+          718.3370312733792,
+          297.1269842202442,
+          94.01295950744291,
+          418.2097703745339,
+          548.9013429648242
+        ],
+        "relative_change": 1.8531694391087229e-16
+      }
+    ]
+  }
+}
